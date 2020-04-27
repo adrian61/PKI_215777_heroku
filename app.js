@@ -2,11 +2,23 @@ const { google } = require('googleapis');
 const express = require('express')
 const app = express()
 const PORT = process.env.PORT || 5000
-const OAuth2Data = require('./google_key.json')
 
+var CLIENT_ID;
+var CLIENT_SECRET;
+var REDIRECT_URL;
+try {
+const OAuth2Data = require('./google_key.json')
 const CLIENT_ID = OAuth2Data.web.client_id;
 const CLIENT_SECRET = OAuth2Data.web.client_secret;
 const REDIRECT_URL = OAuth2Data.web.redirect_uris[0];
+}
+catch (e){
+    console.log('production')
+    CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
+    CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
+    REDIRECT_URL = process.env.GOOGLE_REDIRECT_URL ;
+}
+
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL)
 var authed = false;
 var path = require('path');
