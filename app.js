@@ -1,27 +1,44 @@
 const { google } = require('googleapis');
-const express = require('express')
-const app = express()
+const express = require('express');
+const app = express();
 const PORT = process.env.PORT || 5000
+const passport = require('passport');
+const FacebookStrategy = require('passport-facebook').Strategy;
+
 
 var CLIENT_ID;
 var CLIENT_SECRET;
 var REDIRECT_URL;
 try {
-    const OAuth2Data = require('./google_key.json')
+    const OAuth2Data = require('./google_key.json');
     CLIENT_ID = OAuth2Data.web.client_id;
     CLIENT_SECRET = OAuth2Data.web.client_secret;
     REDIRECT_URL = OAuth2Data.web.redirect_uris[0];
 }
 catch (e) {
-    console.log('production')
+    console.log('production');
     CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
     CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET;
     REDIRECT_URL = process.env.GOOGLE_REDIRECT_URL;
+
+}
+
+try {
+    const facebookKey = require('./facebook_key.json');
+    FACEBOOK_API_ID = facebookKey.web.FACEBOOK_API_ID;
+    FACEBOOK_API_SECRET = facebookKey.web.FACEBOOK_API_SECRET;
+    FACEBOOK_API_CALLBACK_URL = facebookKey.web.FACEBOOK_API_CALLBACK_URL;
+}
+catch (e) {
+    console.log('production')
+    FACEBOOK_API_ID = process.env.FACEBOOK_API_ID;
+    FACEBOOK_API_SECRET = process.env.FACEBOOK_API_SECRET;
+    FACEBOOK_API_CALLBACK_URL = process.env.FACEBOOK_API_CALLBACK_URL;
 }
 
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL)
 var authed = false;
-var path = require('path');
+
 var socialService = ""
 app.set('view engine', 'ejs');
 app.get('/bootstrap.min.css', function (req, res) {
@@ -57,22 +74,6 @@ app.get('/google_login', (req, res) => {
         authed = false;
     }
 })
-app.get('/logout', (req, res) => {
-    if (socialService == "google") {
-        authed = false;
-        app.post('https://accounts.google.com/o/oauth2/revoke?token=' + token + '.apps.googleusercontent.com');
-        loggedUser = null;
-        token = null;
-        imageProfile = null;
-        socialService = "";
-        res.render('index');
-    }
-    if (socialService == "facebook") { }
-
-})
-
-
-
 
 app.get('/auth/google/callback', function (req, res) {
     const code = req.query.code
@@ -103,5 +104,63 @@ app.get('/auth/google/callback', function (req, res) {
         });
     }
 });
+
+
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+passport.serializeUser(function (user, done) {
+    done(null, user);
+});
+
+passport.deserializeUser(function (user, done) {
+    done(null, user)
+});
+
+passport.use(new FacebookStrategy({
+    clientID: FACEBOOK_API_ID,
+    clientSecret: FACEBOOK_API_SECRET,
+    callbackURL: FACEBOOK_API_CALLBACK_URL,
+    profileFields: ['displayName', 'photos']
+},
+
+    function (accessToken, refreshToken, user, done) {
+        loggedUser = user.displayName;
+        imageProfile = user.photos[0].value;
+        return done(null, user);
+    }
+));
+app.get('/auth/facebook', passport.authenticate('facebook', { scope: "email" }));
+
+app.get('/auth/facebook/callback',
+    passport.authenticate('facebook', { failureRedirect: '/login' }),
+    function (req, res) {
+        authed = true;
+        socialService = "facebook";
+        res.render('logged');
+    });
+
+app.get('/logout', (req, res) => {
+    if (socialService == "google") {
+        authed = false;
+        app.post('https://accounts.google.com/o/oauth2/revoke?token=' + token + '.apps.googleusercontent.com');
+        loggedUser = null;
+        token = null;
+        imageProfile = null;
+        socialService = "";
+    }
+    if (socialService == "facebook") {
+        authed = false;
+        loggedUser = null;
+        imageProfile = null;
+        console.log("1");
+        req.logout();
+        console.log("2");
+    }
+
+    res.render('index');
+
+})
 
 app.listen(PORT, () => console.log(`Example app listening at http://localhost:${PORT}`))
