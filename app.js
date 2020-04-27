@@ -10,6 +10,8 @@ const REDIRECT_URL = OAuth2Data.web.redirect_uris[0];
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL)
 var authed = false;
 var path = require('path');
+var socialService = ""
+app.set('view engine', 'ejs');
 app.get('/bootstrap.min.css', function(req, res) {
     res.sendFile(__dirname + '/node_modules/bootstrap/dist/css/bootstrap.min.css');
 });
@@ -26,8 +28,7 @@ app.get('/logo.png', function(req, res) {
     res.sendFile(__dirname + '/static/logo.png');
 });
 app.get('/',function(req,res){
-    res.sendFile(path.join(__dirname+'/static/index.html'));
-    //__dirname : It will resolve to your project folder.
+    res.render('index');
   });
 
 app.get('/google_login', (req, res) => {
@@ -48,10 +49,39 @@ app.get('/google_login', (req, res) => {
             } else{
                 loggedUser= result.data.name;
                 console.log(loggedUser);
+                imageProfile = result.data.picture;
+                socialService = "google";
             }
-            res.send('Logged in:'. concat(loggedUser, ' <img src="',result.data.picture, '"height="23" width="23">'))
+            res.render('logged')
         });
     }
 })
+app.get('/logout', (req, res) => {
+    if(socialService == "google"){console.log('1');}
+    if(socialService == "facebook"){console.log('2');}
+    console.log('3');
+    res.render('index')    
+})
+
+
+
+
+app.get('/auth/google/callback', function (req, res) {
+    const code = req.query.code
+    if (code) {
+        // Get an access token based on our OAuth code
+        oAuth2Client.getToken(code, function (err, tokens) {
+            if (err) {
+                console.log('Error authenticating')
+                console.log(err);
+            } else {
+                console.log('Successfully authenticated');
+                oAuth2Client.setCredentials(tokens);
+                authed = true;
+                res.redirect('/')
+            }
+        });
+    }
+});
 
 app.listen(PORT, () => console.log(`Example app listening at http://localhost:${PORT}`))
