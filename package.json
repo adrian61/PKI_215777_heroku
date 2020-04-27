@@ -9,7 +9,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bootstrap-social": "^5.1.1",
     "express": "^4.17.1",
+    "font-awesome": "^4.7.0",
     "googleapis": "^49.0.0"
   }
 }
