@@ -109,7 +109,7 @@ app.get('/auth/google/callback', function (req, res) {
                 oAuth2Client.setCredentials(tokens);
                 authed = true;
                 var oauth2 = google.oauth2({ auth: oAuth2Client, version: 'v2' });
-                oauth2.userinfo.v2.me.get(function (err, result) {
+                oauth2.userinfo.v2.me.get( function (err, result) {
                     if (err) {
                         console.log('caught error');
                         console.log(err);
@@ -118,6 +118,18 @@ app.get('/auth/google/callback', function (req, res) {
                         token = result.data.getToken;
                         imageProfile = result.data.picture;
                         socialService = "google";
+                        pool.query('SELECT * FROM public."users" where name = \'' + loggedUser + '\'', (error, res) => {
+                            if (error) {
+                                throw error;
+                            }
+                            console.log('Dostałem2 ...');
+                            if (!res.rows.length) {
+                                return pool.query('INSERT INTO public."users"(name, joined, lastvisit) values($1, current_timestamp, current_timestamp)', [loggedUser]);
+                            }
+                            else {
+                                //pool.query('UPDATE users SET counter=\'2\' WHERE id=\'Adrian Kowalski\'', [loggedUser]);
+                            }
+                        })
                     }
 
                     res.render('logged');
