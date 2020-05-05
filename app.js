@@ -4,6 +4,11 @@ const app = express();
 const PORT = process.env.PORT || 5000
 const passport = require('passport');
 const FacebookStrategy = require('passport-facebook').Strategy;
+const { Pool } = require('pg');
+const pool = new Pool({
+    connectionString: `postgresql://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_DATABASE}`,
+    ssl: { rejectUnauthorized: false }
+})
 
 
 var CLIENT_ID;
@@ -39,6 +44,22 @@ catch (e) {
 const oAuth2Client = new google.auth.OAuth2(CLIENT_ID, CLIENT_SECRET, REDIRECT_URL)
 var authed = false;
 
+pool.connect();
+const getUsers = (request, response) => {
+    if (authed) {
+        console.log('Pobieram dane ...');
+        pool.query('SELECT * FROM public."users"', (error, res) => {
+            if (error) {
+                throw error
+            }
+            console.log('Dostałem ...');
+            response.json(res);
+        })
+    }
+    else response.send("Not authed");
+}
+
+
 var socialService = ""
 app.set('view engine', 'ejs');
 app.get('/bootstrap.min.css', function (req, res) {
@@ -59,6 +80,7 @@ app.get('/logo.png', function (req, res) {
 app.get('/', function (req, res) {
     res.render('index');
 });
+app.route('/users').get(getUsers);
 
 app.get('/google_login', (req, res) => {
     if (!authed) {
@@ -74,7 +96,6 @@ app.get('/google_login', (req, res) => {
         authed = false;
     }
 })
-
 app.get('/auth/google/callback', function (req, res) {
     const code = req.query.code
     if (code) {
@@ -91,13 +112,14 @@ app.get('/auth/google/callback', function (req, res) {
                 oauth2.userinfo.v2.me.get(function (err, result) {
                     if (err) {
                         console.log('caught error');
-                        console.log(err)
+                        console.log(err);
                     } else {
                         loggedUser = result.data.name;
                         token = result.data.getToken;
                         imageProfile = result.data.picture;
                         socialService = "google";
                     }
+
                     res.render('logged');
                 });
             }
